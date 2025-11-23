@@ -8,6 +8,7 @@ import ErrorPanel from '@/components/Editor/ErrorPanel';
 import Tooltip from '@/components/ui/Tooltip';
 import { parseContent, convertContent, Format, detectFormat } from '@/lib/converter';
 import { ValidationError, validateSchema, validateDuplicates } from '@/lib/validator';
+import { getFixableDuplicateRanges } from '@/lib/ast';
 import schema from '@/schema.json';
 
 const MonacoWrapper = dynamic(() => import('@/components/Editor/MonacoWrapper'), { ssr: false });
@@ -190,6 +191,46 @@ export default function Home() {
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
+
+  // Auto-fix duplicates
+  useEffect(() => {
+    if (!code) return;
+
+    // We need to check for duplicates and fix them automatically
+    const fixes = getFixableDuplicateRanges(code, format);
+
+    if (fixes.length > 0) {
+      // Apply fixes from bottom to top to preserve indices
+      const sortedFixes = [...fixes].sort((a, b) => {
+        if (a.range.startLine !== b.range.startLine) {
+          return b.range.startLine - a.range.startLine;
+        }
+        return b.range.startColumn - a.range.startColumn;
+      });
+
+      const lines = code.split('\n');
+      let modified = false;
+
+      sortedFixes.forEach(fix => {
+        const lineIndex = fix.range.startLine - 1;
+        const line = lines[lineIndex];
+
+        // We need to replace the value part. 
+        // The range covers the value.
+        // startColumn is 1-based.
+
+        const before = line.substring(0, fix.range.startColumn - 1);
+        const after = line.substring(fix.range.endColumn - 1);
+
+        lines[lineIndex] = `${before}${fix.newValue}${after}`;
+        modified = true;
+      });
+
+      if (modified) {
+        setCode(lines.join('\n'));
+      }
+    }
+  }, [code, format]);
 
   if (!mounted) return null;
 
