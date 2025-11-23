@@ -1,0 +1,55 @@
+{
+    "type": "object",
+    "properties": {
+        "surveyTitle": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "questions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "question": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "multiple-choice",
+                            "text",
+                            "rating"
+                        ]
+                    },
+                    "required": {
+                        "type": "boolean"
+                    },
+                    "options": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "question",
+                    "type",
+                    "required"
+                ],
+                "additionalProperties": false
+            }
+        }
+    },
+    "required": [
+        "surveyTitle",
+        "description",
+        "questions"
+    ],
+    "additionalProperties": false
+}
