@@ -1,0 +1,17 @@
+# Recent Changes
+
+1. **Migration to Native Monaco Editor**
+   - Removed `@monaco-editor/react` dependency.
+   - Installed `monaco-editor`.
+   - Refactored `MonacoWrapper.tsx` to initialize the editor using `monaco.editor.create`.
+
+2. **Read-Only Functionality**
+   - Implemented logic to make entire lines containing "id" read-only.
+   - Updated `onKeyDown` handler to block edits on read-only lines.
+   - Fixed stale closure issues to support JSON, YAML, and XML formats.
+
+3. **Custom Find/Replace Panel**
+   - Created `FindReplacePanel.tsx` component.
+   - Added Find/Replace icon to the toolbar in `page.tsx`.
+   - Implemented `executeFind`, `findNext`, `findPrevious`, `executeReplace`, `executeReplaceAll` in `MonacoWrapper`.
+   - *Note: Search highlighting visibility and state updates were debugged.*

@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, Upload, Download, Copy, Check } from 'lucide-react';
+import { Moon, Sun, Upload, Download, Copy, Check, Search } from 'lucide-react';
 import ErrorPanel from '@/components/Editor/ErrorPanel';
+import FindReplacePanel from '@/components/Editor/FindReplacePanel';
 import Tooltip from '@/components/ui/Tooltip';
 import { parseContent, convertContent, Format, detectFormat } from '@/lib/converter';
 import { ValidationError, validateSchema, validateDuplicates } from '@/lib/validator';
 import { getFixableDuplicateRanges } from '@/lib/ast';
 import schema from '@/schema.json';
+import type { MonacoEditorHandle } from '@/components/Editor/MonacoWrapper';
 
 const MonacoWrapper = dynamic(() => import('@/components/Editor/MonacoWrapper'), { ssr: false });
 
@@ -94,6 +96,12 @@ export default function Home() {
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
   const [panelHeight, setPanelHeight] = useState(200);
   const [isResizing, setIsResizing] = useState(false);
+
+  const [isFindPanelOpen, setIsFindPanelOpen] = useState(false);
+  const [matchCount, setMatchCount] = useState(0);
+  const [currentMatch, setCurrentMatch] = useState(0);
+
+  const editorRef = useRef<MonacoEditorHandle>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -235,7 +243,7 @@ export default function Home() {
   if (!mounted) return null;
 
   return (
-    <main className="flex flex-col h-screen bg-white dark:bg-black text-black dark:text-white overflow-hidden">
+    <main className="flex flex-col h-screen bg-white dark:bg-black text-black dark:text-white overflow-hidden relative">
       <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 shrink-0">
         <h1 className="font-semibold">Monaco Editor</h1>
         <div className="flex items-center gap-4">
@@ -254,6 +262,14 @@ export default function Home() {
             <Tooltip content="Copy to Clipboard">
               <button onClick={handleCopy} className="p-2 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
                 {isCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </Tooltip>
+            <Tooltip content="Find & Replace">
+              <button
+                onClick={() => setIsFindPanelOpen(true)}
+                className={`p-2 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors ${isFindPanelOpen ? 'bg-zinc-200 dark:bg-zinc-800' : ''}`}
+              >
+                <Search className="w-4 h-4" />
               </button>
             </Tooltip>
           </div>
@@ -278,9 +294,36 @@ export default function Home() {
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <div className="flex-1 overflow-hidden relative">
           <MonacoWrapper
+            ref={editorRef}
             code={code}
             onChange={setCode}
             language={format}
+            onMatchCountChange={(count, current) => {
+              setMatchCount(count);
+              setCurrentMatch(current);
+            }}
+          />
+
+          <FindReplacePanel
+            isOpen={isFindPanelOpen}
+            onClose={() => {
+              setIsFindPanelOpen(false);
+              editorRef.current?.cancelFind();
+            }}
+            onFind={(text, matchCase, wholeWord) => {
+              console.log('Page: onFind called', { editorRef: editorRef.current });
+              if (editorRef.current) {
+                editorRef.current.executeFind(text, matchCase, wholeWord);
+              } else {
+                console.error('Page: editorRef.current is null');
+              }
+            }}
+            onFindNext={() => editorRef.current?.findNext()}
+            onFindPrevious={() => editorRef.current?.findPrevious()}
+            onReplace={(text) => editorRef.current?.executeReplace(text)}
+            onReplaceAll={(searchText, replaceText) => editorRef.current?.executeReplaceAll(searchText, replaceText)}
+            matchCount={matchCount}
+            currentMatch={currentMatch}
           />
         </div>
 
