@@ -1,5 +1,11 @@
+import { getReadOnlyRanges, getIdLineRanges } from './lib/ast';
 
-import { getReadOnlyRanges } from './lib/ast';
+const jsonSample = `
+{
+    "id": 1,
+    "name": "Item 1"
+}
+`;
 
 const yamlSample = `
 - id: 1
@@ -21,5 +27,6 @@ const xmlSample = `
 </root>
 `;
 
-console.log('YAML Ranges:', getReadOnlyRanges(yamlSample, 'yaml'));
-console.log('XML Ranges:', getReadOnlyRanges(xmlSample, 'xml'));
+console.log('JSON Line Ranges:', getIdLineRanges(jsonSample, 'json'));
+console.log('YAML Line Ranges:', getIdLineRanges(yamlSample, 'yaml'));
+console.log('XML Line Ranges:', getIdLineRanges(xmlSample, 'xml'));

@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import * as monaco from 'monaco-editor';
 import { useTheme } from 'next-themes';
-import { getReadOnlyRanges } from '@/lib/ast';
+import { getReadOnlyRanges, getIdLineRanges } from '@/lib/ast';
 
 export interface MonacoEditorHandle {
     triggerFind: () => void;
@@ -251,43 +251,14 @@ const MonacoWrapper = forwardRef<MonacoEditorHandle, MonacoWrapperProps>(({ code
             isInternalChange.current = true;
             onChange?.(value);
             isInternalChange.current = false;
-            updateReadOnlyRanges(editor, value);
+            updateHiddenAreas(editor, value);
         });
         subscriptionRef.current = subscription;
 
-        // Initial read-only ranges
-        updateReadOnlyRanges(editor, code);
+        // Initial hidden areas
+        updateHiddenAreas(editor, code);
 
-        // Block edits in read-only ranges
-        editor.onKeyDown((e) => {
-            const position = editor.getPosition();
-            if (!position) return;
 
-            // Allow navigation keys
-            if (
-                e.keyCode === monaco.KeyCode.UpArrow ||
-                e.keyCode === monaco.KeyCode.DownArrow ||
-                e.keyCode === monaco.KeyCode.LeftArrow ||
-                e.keyCode === monaco.KeyCode.RightArrow ||
-                e.keyCode === monaco.KeyCode.PageUp ||
-                e.keyCode === monaco.KeyCode.PageDown ||
-                e.keyCode === monaco.KeyCode.Home ||
-                e.keyCode === monaco.KeyCode.End
-            ) {
-                return;
-            }
-
-            const ranges = getReadOnlyRanges(editor.getValue(), languageRef.current);
-            const isReadOnly = ranges.some(range =>
-                position.lineNumber >= range.startLine &&
-                position.lineNumber <= range.endLine
-            );
-
-            if (isReadOnly) {
-                e.stopPropagation();
-                e.preventDefault();
-            }
-        });
 
         return () => {
             if (subscriptionRef.current) {
@@ -312,8 +283,8 @@ const MonacoWrapper = forwardRef<MonacoEditorHandle, MonacoWrapperProps>(({ code
             const model = editorRef.current.getModel();
             if (model) {
                 monaco.editor.setModelLanguage(model, language);
-                // Re-calculate ranges when language changes
-                updateReadOnlyRanges(editorRef.current, editorRef.current.getValue());
+                // Re-calculate hidden areas when language changes
+                updateHiddenAreas(editorRef.current, editorRef.current.getValue());
             }
         }
     }, [language]);
@@ -324,39 +295,23 @@ const MonacoWrapper = forwardRef<MonacoEditorHandle, MonacoWrapperProps>(({ code
             const currentValue = editorRef.current.getValue();
             if (currentValue !== code) {
                 editorRef.current.setValue(code);
-                updateReadOnlyRanges(editorRef.current, code);
+                updateHiddenAreas(editorRef.current, code);
             }
         }
     }, [code]);
 
-    const updateReadOnlyRanges = (editor: monaco.editor.IStandaloneCodeEditor, value: string) => {
-        const ranges = getReadOnlyRanges(value, language);
-        const newDecorations: monaco.editor.IModelDeltaDecoration[] = ranges.map(range => ({
-            range: new monaco.Range(range.startLine, range.startColumn, range.endLine, range.endColumn),
-            options: {
-                isWholeLine: true,
-                className: 'read-only-code',
-                hoverMessage: { value: 'This line is read-only (ID)' },
-                inlineClassName: 'read-only-inline'
-            }
-        }));
-
-        if (decorationsRef.current) {
-            decorationsRef.current.clear();
-        }
-        decorationsRef.current = editor.createDecorationsCollection(newDecorations);
+    const updateHiddenAreas = (editor: monaco.editor.IStandaloneCodeEditor, value: string) => {
+        const ranges = getIdLineRanges(value, languageRef.current);
+        const hiddenRanges = ranges.map(range =>
+            new monaco.Range(range.startLine, 1, range.endLine, 1)
+        );
+        (editor as any).setHiddenAreas(hiddenRanges);
     };
 
     return (
         <>
             <style jsx global>{`
-                .read-only-code {
-                    background-color: ${currentTheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
-                    cursor: not-allowed;
-                }
-                .read-only-inline {
-                    opacity: 0.7;
-                }
+
                 .findMatch {
                     background-color: rgba(255, 212, 0, 0.4) !important;
                 }

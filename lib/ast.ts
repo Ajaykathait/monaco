@@ -191,6 +191,16 @@ export const getReadOnlyRanges = (code: string, format: string = 'json'): Range[
     return occurrences.map(occ => occ.range);
 };
 
+export const getIdLineRanges = (code: string, format: string = 'json'): Range[] => {
+    const occurrences = findAllIds(code, format);
+    return occurrences.map(occ => ({
+        startLine: occ.range.startLine,
+        startColumn: 1,
+        endLine: occ.range.endLine,
+        endColumn: 1
+    }));
+};
+
 export const getFixableDuplicateRanges = (code: string, format: string): FixableRange[] => {
     const occurrences = findAllIds(code, format);
     const fixes: FixableRange[] = [];
